@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Neumorphism Base */
+    --neuro-base: 216 19% 92%;
+    --neuro-light: 0 0% 100%;
+    --neuro-dark: 215 16% 75%;
+    
+    /* Patient Theme (Calm & Trustworthy) */
+    --patient-primary: 217 91% 60%;
+    --patient-accent: 158 64% 52%;
+    --patient-bg: 210 40% 98%;
+    --patient-text: 215 25% 17%;
+    
+    /* Doctor Theme (Professional & Focused) */
+    --doctor-primary: 243 75% 59%;
+    --doctor-accent: 38 92% 50%;
+    --doctor-bg: 214 32% 95%;
+    --doctor-text: 222 47% 11%;
+    
+    /* Semantic Tokens */
+    --background: var(--patient-bg);
+    --foreground: var(--patient-text);
+
+    --card: var(--neuro-base);
+    --card-foreground: var(--patient-text);
+
+    --popover: var(--neuro-base);
+    --popover-foreground: var(--patient-text);
+
+    --primary: var(--patient-primary);
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: var(--neuro-base);
+    --secondary-foreground: var(--patient-text);
+
+    --muted: 215 16% 85%;
+    --muted-foreground: 215 10% 50%;
+
+    --accent: var(--patient-accent);
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 16% 80%;
+    --input: var(--neuro-base);
+    --ring: var(--primary);
+
+    --radius: 12px;
+
+    --sidebar-background: var(--neuro-base);
+    --sidebar-foreground: var(--patient-text);
+    --sidebar-primary: var(--patient-primary);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 16% 88%;
+    --sidebar-accent-foreground: var(--patient-text);
+    --sidebar-border: 215 16% 85%;
+    --sidebar-ring: var(--primary);
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--patient-primary)), hsl(179 78% 56%));
+    --gradient-doctor: linear-gradient(135deg, hsl(var(--doctor-primary)), hsl(var(--doctor-accent)));
+    
+    /* Neumorphic Shadows */
+    --shadow-neuro-raised: -5px -5px 10px hsl(var(--neuro-light)), 5px 5px 10px hsl(var(--neuro-dark));
+    --shadow-neuro-inset: inset -5px -5px 10px hsl(var(--neuro-light)), inset 5px 5px 10px hsl(var(--neuro-dark));
+    --shadow-soft: 0 4px 15px 0 rgba(59, 130, 246, 0.15);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .doctor-theme {
+    --primary: var(--doctor-primary);
+    --accent: var(--doctor-accent);
+    --background: var(--doctor-bg);
+    --foreground: var(--doctor-text);
+    --sidebar-primary: var(--doctor-primary);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  
+  /* Neumorphic Elements */
+  .neuro-card {
+    background: hsl(var(--neuro-base));
+    box-shadow: var(--shadow-neuro-raised);
+    border-radius: var(--radius);
+    transition: var(--transition-smooth);
+  }
+  
+  .neuro-card:hover {
+    box-shadow: -8px -8px 16px hsl(var(--neuro-light)), 8px 8px 16px hsl(var(--neuro-dark));
+  }
+  
+  .neuro-inset {
+    box-shadow: var(--shadow-neuro-inset);
+  }
+  
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Floating Labels */
+  .floating-input {
+    @apply relative;
+  }
+  
+  .floating-input input:focus + label,
+  .floating-input input:not(:placeholder-shown) + label {
+    @apply -translate-y-6 text-xs;
+    color: hsl(var(--primary));
+  }
+  
+  /* Smooth Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
