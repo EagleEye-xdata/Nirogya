@@ -12,7 +12,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,css,scss,json,md}\"",
     "preview": "vite preview",
     "prepare": "husky install",
-    "analyze": "vite-bundle-visualizer"
+    "analyze": "vite-bundle-visualizer",
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.16",
