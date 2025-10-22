@@ -75,10 +75,7 @@ interface PrescriptionActivity extends ActivityBase {
   medications: string[];
 }
 
-type RecentActivity =
-  | AppointmentActivity
-  | ReportActivity
-  | PrescriptionActivity;
+type RecentActivity = AppointmentActivity | ReportActivity | PrescriptionActivity;
 
 const PatientDashboard: FC = () => {
   const healthMetrics: HealthMetric[] = [
@@ -224,11 +221,11 @@ const PatientDashboard: FC = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="animate-fade-in space-y-6">
       {/* Header Section */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-4xl font-bold mb-2">
+          <h1 className="mb-2 text-4xl font-bold">
             Welcome Back, Rahul! <span className="wave-emoji">👋</span>
           </h1>
           <p className="text-xl text-muted-foreground">
@@ -256,8 +253,8 @@ const PatientDashboard: FC = () => {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="mb-4 text-2xl font-semibold">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {quickActions.map((action, idx) => {
             const paths = [
               "/patient/upload-reports",
@@ -269,18 +266,15 @@ const PatientDashboard: FC = () => {
               <Link key={idx} to={paths[idx]}>
                 <NeuroCard
                   topBorderColor={action.color}
-                  className="text-center space-y-3 cursor-pointer hover:translate-y-[-4px] group"
+                  className="group cursor-pointer space-y-3 text-center hover:translate-y-[-4px]"
                 >
                   <div
-                    className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"
+                    className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
                     style={{ backgroundColor: `${action.color}20` }}
                   >
-                    <action.icon
-                      className="h-6 w-6"
-                      style={{ color: action.color }}
-                    />
+                    <action.icon className="h-6 w-6" style={{ color: action.color }} />
                   </div>
-                  <div className="font-medium text-sm">{action.label}</div>
+                  <div className="text-sm font-medium">{action.label}</div>
                 </NeuroCard>
               </Link>
             );
@@ -289,15 +283,13 @@ const PatientDashboard: FC = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid gap-6 md:grid-cols-3">
         <NeuroCard topBorderColor="#3B82F6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">
-                Total Reports
-              </p>
+              <p className="mb-1 text-sm text-muted-foreground">Total Reports</p>
               <p className="text-3xl font-bold">24</p>
-              <p className="text-xs text-accent flex items-center gap-1 mt-1">
+              <p className="mt-1 flex items-center gap-1 text-xs text-accent">
                 <TrendingUp className="h-3 w-3" />
                 +3 this month
               </p>
@@ -309,9 +301,9 @@ const PatientDashboard: FC = () => {
         <NeuroCard topBorderColor="#34D399">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Appointments</p>
+              <p className="mb-1 text-sm text-muted-foreground">Appointments</p>
               <p className="text-3xl font-bold">8</p>
-              <p className="text-xs text-accent flex items-center gap-1 mt-1">
+              <p className="mt-1 flex items-center gap-1 text-xs text-accent">
                 <Clock className="h-3 w-3" />2 upcoming
               </p>
             </div>
@@ -322,9 +314,9 @@ const PatientDashboard: FC = () => {
         <NeuroCard topBorderColor="#4F46E5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Health Score</p>
+              <p className="mb-1 text-sm text-muted-foreground">Health Score</p>
               <p className="text-3xl font-bold">85%</p>
-              <p className="text-xs text-accent flex items-center gap-1 mt-1">
+              <p className="mt-1 flex items-center gap-1 text-xs text-accent">
                 <Activity className="h-3 w-3" />
                 Good condition
               </p>
@@ -336,50 +328,44 @@ const PatientDashboard: FC = () => {
 
       {/* Recent Activity */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-semibold">Recent Activity</h2>
-          <button className="text-primary hover:underline text-sm">
-            View All
-          </button>
+          <button className="text-sm text-primary hover:underline">View All</button>
         </div>
         <NeuroCard>
           <div className="space-y-4">
             {recentActivity.map((activity, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between pb-4 border-b border-border last:border-0 last:pb-0"
+                className="flex items-center justify-between border-b border-border pb-4 last:border-0 last:pb-0"
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`w-2 h-2 rounded-full ${
+                    className={`h-2 w-2 rounded-full ${
                       activity.type === "appointment"
                         ? "bg-primary"
                         : activity.type === "report"
-                        ? "bg-[#34D399]"
-                        : "bg-[#F59E0B]"
+                          ? "bg-[#34D399]"
+                          : "bg-[#F59E0B]"
                     }`}
                   />
                   <div>
                     <p className="font-medium">{activity.title}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground">
-                        {activity.details}
-                      </p>
-                      {activity.time && (
-                        <p className="text-sm text-muted-foreground">
-                          • {activity.time}
-                        </p>
+                      <p className="text-sm text-muted-foreground">{activity.details}</p>
+                      {activity.type === "appointment" && (
+                        <p className="text-sm text-muted-foreground">• {activity.time}</p>
                       )}
                     </div>
                   </div>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
                     activity.status === "scheduled"
                       ? "bg-primary/10 text-primary"
                       : activity.status === "completed"
-                      ? "bg-[#34D399]/10 text-[#34D399]"
-                      : "bg-[#F59E0B]/10 text-[#F59E0B]"
+                        ? "bg-[#34D399]/10 text-[#34D399]"
+                        : "bg-[#F59E0B]/10 text-[#F59E0B]"
                   }`}
                 >
                   {activity.status}
@@ -392,15 +378,13 @@ const PatientDashboard: FC = () => {
 
       {/* AI Assistant Promo */}
       <NeuroCard className="bg-gradient-primary !text-white">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           <div className="space-y-2">
             <h3 className="text-2xl font-bold">Try Our AI Health Assistant</h3>
-            <p className="opacity-90">
-              Get instant answers about your reports and health queries
-            </p>
+            <p className="opacity-90">Get instant answers about your reports and health queries</p>
           </div>
           <AnimatedButton
-            className="bg-white !text-primary hover:bg-opacity-90 shrink-0"
+            className="shrink-0 bg-white !text-primary hover:bg-opacity-90"
             variant="gradient"
             size="md"
           >

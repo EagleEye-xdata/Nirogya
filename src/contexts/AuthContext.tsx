@@ -1,16 +1,34 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: "patient" | "doctor";
+}
+
+// Profiles
+export interface PatientProfile {
+  fullName: string;
+  phone?: string;
+  dob?: string;
+  allergies?: string[];
+  emergencyContact?: string;
+  bloodType?: string;
+  address?: string;
+  _updatedAt?: string;
+}
+
+export interface DoctorProfile {
+  fullName: string;
+  phone?: string;
+  degree?: string;
+  licenseNumber?: string;
+  specialization?: string;
+  clinic?: string;
+  yearsExperience?: number;
+  acceptingNewPatients?: boolean;
+  _updatedAt?: string;
 }
 
 interface AuthContextType {
@@ -25,11 +43,12 @@ interface AuthContextType {
     role: "patient" | "doctor";
   }) => Promise<void>;
   logout: () => void;
+  profile: PatientProfile | DoctorProfile | null;
+  updateProfile: (p: Partial<PatientProfile> | Partial<DoctorProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -42,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
 
   useEffect(() => {
     // Check for stored auth token
@@ -57,6 +77,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
+  // Load profile after user is set
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`profile_${user.id}`);
+      if (raw) setProfile(JSON.parse(raw));
+      else setProfile(null);
+    } catch {
+      setProfile(null);
+    }
+  }, [user]);
+
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -69,9 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: "1",
           name: email.split("@")[0],
           email,
-          role: email.includes("doctor")
-            ? "doctor"
-            : ("patient" as "patient" | "doctor"),
+          role: email.includes("doctor") ? "doctor" : ("patient" as "patient" | "doctor"),
         };
 
         localStorage.setItem("auth_token", "mock_token");
@@ -110,6 +143,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("auth_token", "mock_token");
       localStorage.setItem("user", JSON.stringify(mockUser));
       setUser(mockUser);
+      // Initialize empty profile marker to prompt completion
+      localStorage.removeItem(`profile_${mockUser.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
       throw err;
@@ -122,11 +157,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
     setUser(null);
+    setProfile(null);
+  };
+
+  const updateProfile = (p: Partial<PatientProfile> | Partial<DoctorProfile>) => {
+    if (!user) return;
+    const key = `profile_${user.id}`;
+    const now = new Date().toISOString();
+    const merged = { ...(profile || {}), ...p, _updatedAt: now } as PatientProfile | DoctorProfile;
+    localStorage.setItem(key, JSON.stringify(merged));
+    setProfile(merged);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, signup, logout }}
+      value={{ user, loading, error, login, signup, logout, profile, updateProfile }}
     >
       {children}
     </AuthContext.Provider>

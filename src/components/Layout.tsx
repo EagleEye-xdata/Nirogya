@@ -32,6 +32,7 @@ import { Loading } from "./ui/loading";
 import { PageTransition } from "./ui/transitions";
 import logo from "@/assets/nirogya-logo.png";
 import { cn } from "@/lib/utils";
+import ProfileModal from "@/components/ProfileModal";
 
 interface LayoutProps {
   children: ReactNode;
@@ -133,12 +134,12 @@ const Layout = ({ children, role }: LayoutProps) => {
           initial={{ x: -300 }}
           animate={{ x: sidebarOpen ? 0 : -300 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed top-0 left-0 z-40 h-screen w-64 border-r bg-card"
+          className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card"
         >
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-3 p-4">
               <img src={logo} alt="Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              <span className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent">
                 Nirogya
               </span>
             </div>
@@ -155,17 +156,12 @@ const Layout = ({ children, role }: LayoutProps) => {
               ))}
             </nav>
 
-            <div className="p-4 border-t border-border">
+            <div className="border-t border-border p-4">
               <NavGroup label="Settings">
-                <NavItem
-                  to="/settings"
-                  icon={Settings}
-                  label="Settings"
-                  disabled={isLoading}
-                />
+                <NavItem to="/settings" icon={Settings} label="Settings" disabled={isLoading} />
                 <div
                   onClick={handleLogout}
-                  className="relative flex items-center gap-3 rounded-lg px-3 py-2 text-destructive hover:text-destructive/90 transition-colors cursor-pointer"
+                  className="relative flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-destructive transition-colors hover:text-destructive/90"
                 >
                   <LogOut className="h-5 w-5" />
                   <span>Logout</span>
@@ -175,39 +171,28 @@ const Layout = ({ children, role }: LayoutProps) => {
           </div>
         </motion.aside>
 
-        <div
-          className={cn(
-            "flex-1 transition-all duration-300",
-            sidebarOpen ? "ml-64" : "ml-0"
-          )}
-        >
-          <header className="sticky top-0 z-30 glass border-b border-border">
+        <div className={cn("flex-1 transition-all duration-300", sidebarOpen ? "ml-64" : "ml-0")}>
+          <header className="glass sticky top-0 z-30 border-b border-border">
             <div className="container flex h-16 items-center justify-between">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
+                className="rounded-lg p-2 transition-colors hover:bg-muted"
               >
-                {sidebarOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
 
               <div className="flex items-center gap-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="relative p-2 hover:bg-muted rounded-lg transition-colors">
+                    <button className="relative rounded-lg p-2 transition-colors hover:bg-muted">
                       <Bell className="h-5 w-5" />
-                      <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary" />
+                      <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
                     <div className="flex items-center justify-between p-4">
                       <span className="text-sm font-medium">Notifications</span>
-                      <span className="text-xs text-muted-foreground">
-                        Mark all as read
-                      </span>
+                      <span className="text-xs text-muted-foreground">Mark all as read</span>
                     </div>
                     <DropdownMenuSeparator />
                   </DropdownMenuContent>
@@ -215,21 +200,18 @@ const Layout = ({ children, role }: LayoutProps) => {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg transition-colors">
+                    <button className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-muted">
                       <User className="h-5 w-5" />
-                      <span className="text-sm font-medium">
-                        {user?.name || "User"}
-                      </span>
+                      <span className="text-sm font-medium">{user?.name || "User"}</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <Link to="/profile">
+                      <DropdownMenuItem>Profile</DropdownMenuItem>
+                    </Link>
                     <DropdownMenuItem>Settings</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="text-destructive"
-                    >
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -241,6 +223,9 @@ const Layout = ({ children, role }: LayoutProps) => {
           <main className={cn("container py-6", isLoading && "opacity-50")}>
             {isLoading ? <Loading /> : children}
           </main>
+
+          {/* Profile modal shown after first login to complete profile */}
+          <ProfileModal />
         </div>
       </div>
     </PageTransition>
