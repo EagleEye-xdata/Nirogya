@@ -6,7 +6,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/contexts/AuthContext";
+import { auth, db } from "@/firebase";
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface PatientProfile {
   fullName: string;
@@ -52,49 +53,45 @@ const SPECIALIZATIONS = [
   "Ophthalmologist",
 ];
 
-const getProfileKey = (userId: string) => `profile_${userId}`;
-
 const ProfileModal: React.FC = () => {
-  const { user, profile, updateProfile } = useAuth();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [patient, setPatient] = useState<PatientProfile>({ fullName: "" });
   const [doctor, setDoctor] = useState<DoctorProfile>({ fullName: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!user) return;
-    const key = getProfileKey(user.id);
-    const existing = localStorage.getItem(key);
-    if (!existing) setOpen(true);
-    else {
-      try {
-        const parsed = JSON.parse(existing);
-        if (user.role === "patient") setPatient(parsed);
-        else setDoctor(parsed);
-      } catch (error) {
-        console.error("Failed to parse profile from localStorage", error);
-      }
-    }
-  }, [user]);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) return;
+      setUser(firebaseUser);
 
-  useEffect(() => {
-    if (!profile || !user) return;
-    if (user.role === "patient") setPatient(profile);
-    else setDoctor(profile);
-  }, [profile, user]);
+      // Fetch user role from Firestore
+      const docRef = doc(db, "users", firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as { role: "patient" | "doctor"; profile?: any };
+        setRole(data.role);
+        if (data.profile) {
+          if (data.role === "patient") setPatient(data.profile);
+          else setDoctor(data.profile);
+        }
+      } else {
+        // No data yet → open modal
+        setOpen(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (user?.role === "patient") {
+    if (role === "patient") {
       if (!patient.fullName || patient.fullName.trim().length < 2)
         errs.fullName = "Please enter a valid full name.";
       if (patient.phone && !/^\+?[0-9\-\s]{7,15}$/.test(patient.phone))
         errs.phone = "Enter a valid phone number.";
-      if (patient.dob) {
-        const dobDate = new Date(patient.dob);
-        if (isNaN(dobDate.getTime()) || dobDate > new Date())
-          errs.dob = "Enter a valid date of birth.";
-      }
     } else {
       if (!doctor.fullName || doctor.fullName.trim().length < 2)
         errs.fullName = "Please enter a valid full name.";
@@ -107,17 +104,25 @@ const ProfileModal: React.FC = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const save = () => {
-    if (!validate()) return;
-    if (!user) return;
-    if (user.role === "patient") updateProfile({ ...(patient as PatientProfile) });
-    else updateProfile({ ...(doctor as DoctorProfile) });
-    setOpen(false);
+  const save = async () => {
+    if (!validate() || !user) return;
+
+    const profileData = role === "patient" ? patient : doctor;
+
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        { role, profile: profileData },
+        { merge: true }
+      );
+      setOpen(false);
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    }
   };
 
   const skip = () => {
     if (!user) return;
-    localStorage.setItem(getProfileKey(user.id), JSON.stringify({ skipped: true }));
     setOpen(false);
   };
 
@@ -134,7 +139,7 @@ const ProfileModal: React.FC = () => {
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {user.role === "patient" ? (
+          {role === "patient" ? (
             <div className="grid grid-cols-1 gap-3">
               <FloatingInput
                 label="Full name"
@@ -149,51 +154,6 @@ const ProfileModal: React.FC = () => {
                 type="tel"
               />
               {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-              <FloatingInput
-                label="Date of birth"
-                value={patient.dob || ""}
-                onChange={(e) => setPatient({ ...patient, dob: e.target.value })}
-                type="date"
-              />
-              {errors.dob && <p className="text-sm text-destructive">{errors.dob}</p>}
-              <FloatingInput
-                label="Allergies (comma separated)"
-                value={(patient.allergies || []).join(", ")}
-                onChange={(e) =>
-                  setPatient({
-                    ...patient,
-                    allergies: e.target.value
-                      .split(",")
-                      .map((s: string) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-              <FloatingInput
-                label="Emergency contact"
-                value={patient.emergencyContact || ""}
-                onChange={(e) => setPatient({ ...patient, emergencyContact: e.target.value })}
-              />
-              <Select onValueChange={(v) => setPatient({ ...patient, bloodType: v })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={patient.bloodType || "Blood Type"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A+">A+</SelectItem>
-                  <SelectItem value="A-">A-</SelectItem>
-                  <SelectItem value="B+">B+</SelectItem>
-                  <SelectItem value="B-">B-</SelectItem>
-                  <SelectItem value="AB+">AB+</SelectItem>
-                  <SelectItem value="AB-">AB-</SelectItem>
-                  <SelectItem value="O+">O+</SelectItem>
-                  <SelectItem value="O-">O-</SelectItem>
-                </SelectContent>
-              </Select>
-              <FloatingInput
-                label="Address"
-                value={patient.address || ""}
-                onChange={(e) => setPatient({ ...patient, address: e.target.value })}
-              />
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
@@ -210,53 +170,6 @@ const ProfileModal: React.FC = () => {
                 type="tel"
               />
               {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-              <FloatingInput
-                label="Degree (e.g., MBBS, MD)"
-                value={doctor.degree || ""}
-                onChange={(e) => setDoctor({ ...doctor, degree: e.target.value })}
-              />
-              <FloatingInput
-                label="License number"
-                value={doctor.licenseNumber || ""}
-                onChange={(e) => setDoctor({ ...doctor, licenseNumber: e.target.value })}
-              />
-              {errors.licenseNumber && (
-                <p className="text-sm text-destructive">{errors.licenseNumber}</p>
-              )}
-              <Select onValueChange={(v) => setDoctor({ ...doctor, specialization: v })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={doctor.specialization || "Specialization"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {SPECIALIZATIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FloatingInput
-                label="Clinic / Hospital"
-                value={doctor.clinic || ""}
-                onChange={(e) => setDoctor({ ...doctor, clinic: e.target.value })}
-              />
-              <FloatingInput
-                label="Years of experience"
-                type="number"
-                value={doctor.yearsExperience?.toString() || ""}
-                onChange={(e) =>
-                  setDoctor({ ...doctor, yearsExperience: Number(e.target.value) || 0 })
-                }
-              />
-              <div className="mt-2 flex items-center gap-3">
-                <input
-                  id="accepting"
-                  type="checkbox"
-                  checked={!!doctor.acceptingNewPatients}
-                  onChange={(e) => setDoctor({ ...doctor, acceptingNewPatients: e.target.checked })}
-                />
-                <label htmlFor="accepting">Accepting new patients</label>
-              </div>
             </div>
           )}
         </div>
@@ -269,7 +182,6 @@ const ProfileModal: React.FC = () => {
             <Button onClick={save}>Save Profile</Button>
           </div>
         </DialogFooter>
-        <DialogClose />
       </DialogContent>
     </Dialog>
   );

@@ -226,7 +226,7 @@ const PatientDashboard: FC = () => {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="mb-2 text-4xl font-bold">
-            Welcome Back, Rahul! <span className="wave-emoji">👋</span>
+            Welcome Back! <span className="wave-emoji">👋</span>
           </h1>
           <p className="text-xl text-muted-foreground">
             Here's your health overview for{" "}
@@ -245,9 +245,7 @@ const PatientDashboard: FC = () => {
               Emergency QR
             </ShadButton>
           </Link>
-          <Avatar className="h-12 w-12">
-            <AvatarFallback>RV</AvatarFallback>
-          </Avatar>
+
         </div>
       </div>
 

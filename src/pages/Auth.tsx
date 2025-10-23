@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { NeuroCard } from "@/components/ui/neuro-card";
 import { AnimatedButton } from "@/components/ui/animated-button";
 import { ShadButton } from "@/components/ui/shad-button";
@@ -7,27 +7,39 @@ import { FloatingInput } from "@/components/ui/floating-input";
 import { Stethoscope, User, Loader2 } from "lucide-react";
 import logo from "@/assets/nirogya-logo.png";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+
+// Firebase
+import { auth, db } from "@/firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+
+interface FormData {
+  email: string;
+  password: string;
+  name: string;
+  phone: string;
+}
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState<"patient" | "doctor">("patient");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
     name: "",
     phone: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  interface LocationState {
-    from?: { pathname: string };
-  }
-  const { login, signup } = useAuth();
-  const from =
-    (location.state as LocationState)?.from?.pathname || `/${role}/dashboard`;
 
+  const navigate = useNavigate();
+
+  // Email/password login/signup
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -45,39 +57,72 @@ const Auth = () => {
       setIsSubmitting(true);
 
       if (isLogin) {
-        await login(formData.email, formData.password);
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
         toast.success("Welcome back!");
       } else {
-        await signup({
-          email: formData.email,
-          password: formData.password,
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: formData.name });
+
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
           name: formData.name,
+          email: formData.email,
           role,
+          phone: formData.phone || "",
+          createdAt: serverTimestamp(),
         });
+
         toast.success("Account created successfully!");
       }
 
-      // Navigate to the protected route or dashboard
-      navigate(from, { replace: true });
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Authentication failed"
-      );
+      navigate("/index"); // ← Navigate to /dashboard
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Google login
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          role: "patient", // default role
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      toast.success(`Welcome ${user.displayName || "back"}!`);
+      navigate("/doctor/dashboard"); // ← Navigate to /dashboard
+    } catch (error: any) {
+      toast.error(error.message || "Google login failed");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
         <Link to="/" className="flex items-center justify-center gap-3 mb-8">
           <img src={logo} alt="HealthApp" className="h-12 w-12" />
           <span className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -86,19 +131,13 @@ const Auth = () => {
         </Link>
 
         <NeuroCard className="space-y-6">
-          {/* Toggle Login/Signup */}
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold">
-              {isLogin ? "Welcome Back" : "Create Account"}
-            </h2>
+            <h2 className="text-3xl font-bold">{isLogin ? "Welcome Back" : "Create Account"}</h2>
             <p className="text-muted-foreground">
-              {isLogin
-                ? "Sign in to continue"
-                : "Start your healthcare journey"}
+              {isLogin ? "Sign in to continue" : "Start your healthcare journey"}
             </p>
           </div>
 
-          {/* Role Selection (only for signup) */}
           {!isLogin && (
             <div className="space-y-3">
               <label className="text-sm font-medium">I am a:</label>
@@ -123,7 +162,6 @@ const Auth = () => {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <>
@@ -131,18 +169,14 @@ const Auth = () => {
                   label="Full Name"
                   type="text"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required={!isLogin}
                 />
                 <FloatingInput
                   label="Phone Number"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="10-digit number"
                 />
               </>
@@ -152,9 +186,7 @@ const Auth = () => {
               label="Email Address"
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
 
@@ -162,9 +194,7 @@ const Auth = () => {
               label="Password"
               type="password"
               value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
             />
 
@@ -176,41 +206,38 @@ const Auth = () => {
               </div>
             )}
 
-            <AnimatedButton
-              type="submit"
-              className="w-full"
-              variant="gradient"
-              size="md"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : isLogin ? (
-                "Sign In"
-              ) : (
-                "Create Account"
-              )}
+            <AnimatedButton type="submit" className="w-full" variant="gradient" size="md" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : isLogin ? "Sign In" : "Create Account"}
             </AnimatedButton>
           </form>
 
-          {/* Toggle between login and signup */}
+          {/* Divider */}
+          <div className="flex items-center justify-center gap-3">
+            <div className="h-px bg-muted flex-1" />
+            <span className="text-muted-foreground text-sm">OR</span>
+            <div className="h-px bg-muted flex-1" />
+          </div>
+
+          <ShadButton
+            type="button"
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2"
+            onClick={handleGoogleLogin}
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+            Continue with Google
+          </ShadButton>
+
           <div className="text-center text-sm">
             <span className="text-muted-foreground">
-              {isLogin
-                ? "Don't have an account? "
-                : "Already have an account? "}
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
             </span>
-            <ShadButton
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsLogin(!isLogin)}
-            >
+            <ShadButton variant="ghost" size="sm" onClick={() => setIsLogin(!isLogin)}>
               {isLogin ? "Sign Up" : "Sign In"}
             </ShadButton>
           </div>
         </NeuroCard>
 
-        {/* Terms */}
         <p className="text-center text-xs text-muted-foreground mt-6">
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -19,14 +19,10 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "./ui/dropdown";
+import { auth, db } from "@/firebase";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown";
 import { NavItem, NavGroup } from "./ui/nav-item";
 import { Loading } from "./ui/loading";
 import { PageTransition } from "./ui/transitions";
@@ -39,77 +35,65 @@ interface LayoutProps {
   role: "patient" | "doctor";
 }
 
+interface UserData {
+  uid: string;
+  name: string;
+  role: "patient" | "doctor";
+}
+
 const Layout = ({ children, role }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<UserData | null | undefined>(undefined); // undefined while loading
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+
+  // Fetch current user
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (!firebaseUser) {
+        setUser(null);
+        navigate("/auth");
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "users", firebaseUser.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data() as UserData;
+          setUser(data);
+        } else {
+          // default role if not found
+          setUser({ uid: firebaseUser.uid, name: firebaseUser.displayName || "User", role: "patient" });
+        }
+      } catch (err) {
+        console.error(err);
+        setUser(null);
+        navigate("/auth");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const patientNavItems = [
-    {
-      path: "/patient/dashboard",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-    },
-    {
-      path: "/patient/reports",
-      icon: Upload,
-      label: "Upload Reports",
-    },
-    {
-      path: "/patient/timeline",
-      icon: Clock,
-      label: "Timeline",
-    },
-    {
-      path: "/patient/ai-chat",
-      icon: MessageCircle,
-      label: "AI Chat",
-    },
-    {
-      path: "/patient/appointments",
-      icon: Calendar,
-      label: "Appointments",
-    },
-    {
-      path: "/patient/emergency",
-      icon: QrCode,
-      label: "Emergency QR",
-    },
+    { path: "/patient/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/patient/reports", icon: Upload, label: "Upload Reports" },
+    { path: "/patient/timeline", icon: Clock, label: "Timeline" },
+    { path: "/patient/ai-chat", icon: MessageCircle, label: "AI Chat" },
+    { path: "/patient/appointments", icon: Calendar, label: "Appointments" },
+    { path: "/patient/emergency", icon: QrCode, label: "Emergency QR" },
   ];
 
   const doctorNavItems = [
-    {
-      path: "/doctor/dashboard",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-    },
-    {
-      path: "/doctor/patients",
-      icon: Users,
-      label: "Patients",
-    },
-    {
-      path: "/doctor/scribe",
-      icon: Mic,
-      label: "AI Scribe",
-    },
-    {
-      path: "/doctor/prescriptions",
-      icon: FileText,
-      label: "Prescriptions",
-    },
-    {
-      path: "/doctor/appointments",
-      icon: Calendar,
-      label: "Appointments",
-    },
-    {
-      path: "/doctor/billing",
-      icon: CreditCard,
-      label: "Billing",
-    },
+    { path: "/doctor/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/doctor/patients", icon: Users, label: "Patients" },
+    { path: "/doctor/scribe", icon: Mic, label: "AI Scribe" },
+    { path: "/doctor/prescriptions", icon: FileText, label: "Prescriptions" },
+    { path: "/doctor/appointments", icon: Calendar, label: "Appointments" },
+    { path: "/doctor/billing", icon: CreditCard, label: "Billing" },
   ];
 
   const navItems = role === "patient" ? patientNavItems : doctorNavItems;
@@ -122,10 +106,14 @@ const Layout = ({ children, role }: LayoutProps) => {
 
   const handleLogout = async () => {
     setIsLoading(true);
-    await logout();
+    await signOut(auth);
     setIsLoading(false);
     navigate("/auth");
   };
+
+  if (user === undefined) {
+    return <Loading fullScreen text="Loading user..." />;
+  }
 
   return (
     <PageTransition>
@@ -139,20 +127,12 @@ const Layout = ({ children, role }: LayoutProps) => {
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-3 p-4">
               <img src={logo} alt="Logo" className="h-8 w-8" />
-              <span className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent">
-                Nirogya
-              </span>
+              <span className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent">Nirogya</span>
             </div>
 
             <nav className="flex-1 space-y-4 p-4">
               {navItems.map((item, idx) => (
-                <NavItem
-                  key={idx}
-                  to={item.path}
-                  icon={item.icon}
-                  label={item.label}
-                  disabled={isLoading}
-                />
+                <NavItem key={idx} to={item.path} icon={item.icon} label={item.label} disabled={isLoading} />
               ))}
             </nav>
 
@@ -174,10 +154,7 @@ const Layout = ({ children, role }: LayoutProps) => {
         <div className={cn("flex-1 transition-all duration-300", sidebarOpen ? "ml-64" : "ml-0")}>
           <header className="glass sticky top-0 z-30 border-b border-border">
             <div className="container flex h-16 items-center justify-between">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="rounded-lg p-2 transition-colors hover:bg-muted"
-              >
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="rounded-lg p-2 transition-colors hover:bg-muted">
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
 
@@ -224,7 +201,6 @@ const Layout = ({ children, role }: LayoutProps) => {
             {isLoading ? <Loading /> : children}
           </main>
 
-          {/* Profile modal shown after first login to complete profile */}
           <ProfileModal />
         </div>
       </div>
