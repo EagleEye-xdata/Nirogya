@@ -2,6 +2,8 @@
 
 An AI-powered centralized health record management system that connects patients, doctors, and healthcare providers through a secure, intelligent platform.
 
+Demo:- https://nirogya-three.vercel.app/
+
 ## 🌟 Features
 
 ### 🔐 Security & Privacy
