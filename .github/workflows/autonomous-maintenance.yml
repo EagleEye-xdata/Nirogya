@@ -1,0 +1,33 @@
+name: Scheduled Codex maintenance
+
+on:
+  schedule:
+    # 09:00, 12:00, 15:00, 18:00, and 22:00 Asia/Kolkata (UTC+05:30).
+    - cron: "30 3,6,9,12,16 * * *"
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: Optional bounded maintenance focus
+        required: false
+        type: string
+        default: general maintenance
+
+permissions: {}
+
+concurrency:
+  group: codex-maintenance-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  maintenance:
+    uses: EagleEye-xdata/EagleEye-xdata/.github/workflows/reusable-autonomous-maintenance.yml@main
+    with:
+      project_name: Nirogya health platform
+      validation_commands: |
+        npm ci
+        npm run build
+        npm run test -- --run
+      allowed_path_pattern: '^(src/|public/|README\.md$|docs/|\.codex/development-state\.json$)'
+      project_context: Protect patient privacy and existing health-record behavior. Do not alter backend code, authentication, environment configuration, medical data models, or deployment settings without explicit approval.
+      focus: ${{ inputs.focus || 'general maintenance' }}
+    secrets: inherit
