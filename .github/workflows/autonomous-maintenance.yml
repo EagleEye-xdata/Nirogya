@@ -30,4 +30,5 @@ jobs:
       allowed_path_pattern: '^(src/|public/|README\.md$|docs/|\.codex/development-state\.json$)'
       project_context: Protect patient privacy and existing health-record behavior. Do not alter backend code, authentication, environment configuration, medical data models, or deployment settings without explicit approval.
       focus: ${{ inputs.focus || 'general maintenance' }}
+      delivery_mode: direct
     secrets: inherit
